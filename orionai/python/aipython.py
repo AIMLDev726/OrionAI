@@ -10,55 +10,70 @@ import os
 import sys
 import subprocess
 import importlib
-import traceback
+# import traceback
 import json
 import time
 import warnings
 from typing import Any, Dict, List, Optional, Union, Tuple
 from io import StringIO, BytesIO
-import contextlib
+# import contextlib
 import datetime
-import tempfile
-import base64
+# import tempfile
 from pathlib import Path
-import threading
-import queue
 
-# Core imports
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
+# Import the lazy loaders from the package
+from .lazy_imports import get_pandas, get_numpy, get_matplotlib, get_seaborn
+# import base64
+# import threading
+# import queue
 # Rich for better terminal UI
 try:
     from rich.console import Console
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
     from rich.prompt import Confirm
-    from rich.panel import Panel
-    from rich.text import Text
+    # from rich.panel import Panel
+    # from rich.text import Text
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
 
-# LLM Providers
-try:
-    import google.generativeai as genai
-    GOOGLE_AVAILABLE = True
-except ImportError:
-    GOOGLE_AVAILABLE = False
+# LLM Providers - use lazy imports to prevent blocking
+GOOGLE_AVAILABLE = False
+OPENAI_AVAILABLE = False 
+ANTHROPIC_AVAILABLE = False
 
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
+def _get_google_genai():
+    """Lazy import Google Generative AI."""
+    global GOOGLE_AVAILABLE
+    try:
+        import google.generativeai as genai
+        GOOGLE_AVAILABLE = True
+        return genai
+    except ImportError:
+        GOOGLE_AVAILABLE = False
+        return None
 
-try:
-    import anthropic
-    ANTHROPIC_AVAILABLE = True
-except ImportError:
-    ANTHROPIC_AVAILABLE = False
+def _get_openai():
+    """Lazy import OpenAI."""
+    global OPENAI_AVAILABLE
+    try:
+        import openai
+        OPENAI_AVAILABLE = True
+        return openai
+    except ImportError:
+        OPENAI_AVAILABLE = False
+        return None
+
+def _get_anthropic():
+    """Lazy import Anthropic."""
+    global ANTHROPIC_AVAILABLE
+    try:
+        import anthropic
+        ANTHROPIC_AVAILABLE = True
+        return anthropic
+    except ImportError:
+        ANTHROPIC_AVAILABLE = False
+        return None
 
 warnings.filterwarnings('ignore')
 
@@ -107,7 +122,8 @@ class GoogleProvider(LLMProvider):
     
     def __init__(self, api_key: str, model: str = "gemini-1.5-pro"):
         super().__init__(api_key, model)
-        if not GOOGLE_AVAILABLE:
+        genai = _get_google_genai()
+        if genai is None:
             raise ImportError("google-generativeai not installed")
         genai.configure(api_key=api_key)
         self.client = genai.GenerativeModel(model)
@@ -125,7 +141,8 @@ class OpenAIProvider(LLMProvider):
     
     def __init__(self, api_key: str, model: str = "gpt-4"):
         super().__init__(api_key, model)
-        if not OPENAI_AVAILABLE:
+        openai = _get_openai()
+        if openai is None:
             raise ImportError("openai not installed")
         self.client = openai.OpenAI(api_key=api_key)
     
@@ -145,7 +162,8 @@ class AnthropicProvider(LLMProvider):
     
     def __init__(self, api_key: str, model: str = "claude-3-sonnet-20240229"):
         super().__init__(api_key, model)
-        if not ANTHROPIC_AVAILABLE:
+        anthropic = _get_anthropic()
+        if anthropic is None:
             raise ImportError("anthropic not installed")
         self.client = anthropic.Anthropic(api_key=api_key)
     
@@ -324,6 +342,12 @@ class AIPython:
     
     def _setup_environment(self):
         """Setup Python execution environment."""
+        # Get the lazy imported modules
+        pd = get_pandas()
+        np = get_numpy()
+        plt = get_matplotlib()
+        sns = get_seaborn()
+        
         self.global_namespace = {
             'pd': pd,
             'np': np,
@@ -354,6 +378,7 @@ class AIPython:
         
         def save_plot(filename: str = None, dpi: int = 300, transparent: bool = False):
             """Save the current matplotlib plot."""
+            plt = get_matplotlib()  # Get matplotlib when needed
             if filename is None:
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = f"plot_{timestamp}.png"
@@ -391,6 +416,7 @@ class AIPython:
         
         def load_data(filepath: str, **kwargs):
             """Smart data loader that detects file format."""
+            pd = get_pandas()  # Get pandas when needed
             filepath = Path(filepath)
             
             if not filepath.exists():
@@ -416,6 +442,7 @@ class AIPython:
         
         def display_results(*args, max_rows: int = 20, max_cols: int = 10):
             """Enhanced display function for results."""
+            pd = get_pandas()  # Get pandas when needed
             for arg in args:
                 if isinstance(arg, pd.DataFrame):
                     print(f"📊 DataFrame Shape: {arg.shape}")

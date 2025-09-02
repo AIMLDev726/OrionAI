@@ -31,7 +31,34 @@ Usage:
     ui()  # Opens interactive interface in browser
 """
 
-from .aipython import AIPython, SimplePythonChat, InteractiveCodeChat, simple_python_chat, interactive_code_chat
+# Import lazy loading functions
+from .lazy_imports import get_pandas, get_numpy, get_matplotlib, get_seaborn
+
+# Import AIPython classes with error handling
+try:
+    from .aipython import AIPython, SimplePythonChat, InteractiveCodeChat, simple_python_chat, interactive_code_chat
+except ImportError as e:
+    print(f"Warning: Could not import AIPython classes: {e}")
+    # Provide dummy classes to prevent complete failure
+    class AIPython:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"AIPython not available due to import issues: {e}")
+    
+    class SimplePythonChat:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"SimplePythonChat not available due to import issues: {e}")
+    
+    class InteractiveCodeChat:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"InteractiveCodeChat not available due to import issues: {e}")
+    
+    def simple_python_chat(*args, **kwargs):
+        raise ImportError(f"simple_python_chat not available due to import issues: {e}")
+    
+    def interactive_code_chat(*args, **kwargs):
+        raise ImportError(f"interactive_code_chat not available due to import issues: {e}")
+
 from ..ui import ui
 
-__all__ = ["AIPython", "SimplePythonChat", "InteractiveCodeChat", "simple_python_chat", "interactive_code_chat", "ui"]
+# Export available functions and classes
+__all__ = ["AIPython", "SimplePythonChat", "InteractiveCodeChat", "simple_python_chat", "interactive_code_chat", "ui", "get_pandas", "get_numpy", "get_matplotlib", "get_seaborn"]

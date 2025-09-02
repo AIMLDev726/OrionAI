@@ -24,7 +24,7 @@ Example Usage:
 from . import python
 from . import ui
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "AIMLDev726"
 __email__ = "aistudentlearn4@gmail.com"
 __url__ = "https://github.com/AIMLDev726/OrionAI"

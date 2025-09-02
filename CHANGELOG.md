@@ -5,6 +5,45 @@ All notable changes to OrionAI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-09-02
+
+### Added
+- 🖥️ **NEW: Interactive CLI Interface** with `orionai` command
+- 💬 **Rich terminal chat** with LLM providers (Google Gemini, OpenAI, Anthropic)
+- 🔧 **Live code execution** with real-time output and timing
+- 📊 **Automatic plot saving** to session directories
+- 💾 **Session management** with conversation history
+- ⚡ **Optimized startup** with lazy loading for instant CLI launch
+- 🛠️ **Error recovery** - LLM automatically fixes syntax errors
+- 🎯 **Enhanced code extraction** with syntax validation
+
+### Fixed
+- 🚀 **Critical CLI Performance**: Fixed 10+ second startup hangs
+- ⏱️ **Code Execution Timing**: Fixed 0.00s execution time bug
+- 🔧 **Matplotlib Integration**: Fixed plot generation and saving
+- 📦 **Lazy Import System**: Optimized heavy dependency loading
+- 🐛 **LLM Code Generation**: Fixed `if __name__ == "__main__"` execution
+- 🔄 **Error Handling**: Improved syntax error recovery loops
+
+### Changed
+- 🏗️ **Refactored CodeExecutor**: Complete rewrite with lazy initialization
+- 📈 **Enhanced Prompt Engineering**: Better LLM code generation
+- 🎨 **Improved UI**: Rich terminal interface with progress indicators
+- 📊 **Session Storage**: Better organization of outputs and images
+
+### Technical Improvements
+- ✨ **Module-level imports removed**: No more blocking matplotlib imports
+- 🔄 **On-demand loading**: Heavy libraries loaded only when needed
+- 🔧 **Code transformation**: Smart handling of `__main__` blocks
+- 📝 **Enhanced validation**: Compile-time syntax checking
+- 🗂️ **Session directories**: Organized file storage per session
+
+### Performance
+- ⚡ **Instant CLI startup** (was 10+ seconds, now <1 second)
+- 🏃 **Real execution times** (fixed 0.00s bug, now shows actual timing)
+- 💾 **Memory efficiency** with lazy loading architecture
+- 🔄 **Faster error recovery** with improved LLM prompts
+
 ## [0.1.0] - 2025-09-02
 
 ### Added

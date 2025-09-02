@@ -9,8 +9,7 @@ with the specific prompt structure designed for safe code generation.
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Protocol
-import openai
+from typing import Any, Dict, Optional, Protocol, List
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,8 @@ class OpenAIProvider:
     """OpenAI GPT provider implementation."""
     
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-3.5-turbo"):
+        # Lazy import to prevent blocking on module load
+        import openai
         self.client = openai.OpenAI(api_key=api_key)
         self.model = model
     
@@ -77,7 +78,31 @@ class GoogleProvider:
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(model)
+            
+            # Configure safety settings to be less restrictive
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                }
+            ]
+            
+            self.model = genai.GenerativeModel(
+                model_name=model,
+                safety_settings=safety_settings
+            )
             self.model_name = model
         except ImportError:
             raise ImportError("google-generativeai package required for GoogleProvider")
@@ -86,18 +111,39 @@ class GoogleProvider:
         """Generate response using Google Gemini API."""
         try:
             generation_config = {
-                "temperature": kwargs.get("temperature", 0),
-                "max_output_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7),
+                "max_output_tokens": kwargs.get("max_tokens", 2000),
+                "top_k": 40,
+                "top_p": 0.95,
             }
             
             response = self.model.generate_content(
                 prompt,
                 generation_config=generation_config
             )
-            return response.text
+            
+            # Handle cases where response is blocked or empty
+            if not response.candidates:
+                return "I apologize, but I couldn't generate a response. Please try rephrasing your request."
+            
+            candidate = response.candidates[0]
+            
+            # Check if content was blocked
+            if candidate.finish_reason.name in ["SAFETY", "RECITATION"]:
+                return "I apologize, but I cannot generate this content due to safety policies. Please try a different request."
+            
+            # Check if we have valid content
+            if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                return candidate.content.parts[0].text
+            else:
+                return "I apologize, but I couldn't generate a proper response. Please try again."
+                
         except Exception as e:
             logger.error(f"Google API error: {str(e)}")
-            raise
+            # Return a more user-friendly error message
+            if "finish_reason" in str(e):
+                return "I apologize, but the content was filtered by safety policies. Please try rephrasing your request."
+            return f"I encountered an error: {str(e)}. Please try again."
 
 
 class LLMInterface:
@@ -105,7 +151,7 @@ class LLMInterface:
     Main LLM interface that implements the OrionAI prompt structure.
     """
     
-    # Core system prompt as defined in the plan
+    # Core system prompt for object-based operations
     SYSTEM_PROMPT = """You are OrionAI, an AI coding assistant.
 Your role is to translate user queries into SAFE Python code snippets
 that operate on the provided object context. 
@@ -126,6 +172,25 @@ Return your response in JSON format:
   "code": "```python\\n...\\n```",
   "expected_output": "..."
 }"""
+
+    # General chat prompt for flexible interactions
+    CHAT_PROMPT = """You are OrionAI, a helpful AI coding assistant.
+
+You can help with:
+- Writing Python code for any task
+- Explaining programming concepts
+- Debugging and fixing code issues
+- Data analysis and visualization
+- General programming questions
+
+When providing code examples:
+1. Use proper Python syntax
+2. Include helpful comments
+3. Provide complete, runnable code
+4. Explain what the code does
+
+If the user asks for code, provide it in Python code blocks using ```python syntax.
+Be helpful, accurate, and educational in your responses."""
     
     def __init__(self, provider: Optional[LLMProvider] = None):
         """
@@ -136,6 +201,59 @@ Return your response in JSON format:
         """
         self.provider = provider or OpenAIProvider()
         logger.info(f"LLMInterface initialized with {type(self.provider).__name__}")
+    
+    def generate_chat_response(self, query: str, conversation_history: List[Dict[str, str]] = None, **kwargs) -> str:
+        """
+        Generate a chat response for general queries.
+        
+        Args:
+            query: User's query
+            conversation_history: Previous conversation messages
+            **kwargs: Additional parameters for LLM
+            
+        Returns:
+            LLM response text
+        """
+        # Build conversation context
+        messages = []
+        
+        # Add system message
+        messages.append({"role": "system", "content": self.CHAT_PROMPT})
+        
+        # Add conversation history
+        if conversation_history:
+            for msg in conversation_history[-10:]:  # Last 10 messages
+                messages.append(msg)
+        
+        # Add current query
+        messages.append({"role": "user", "content": query})
+        
+        # Build prompt for providers that don't support messages
+        if isinstance(self.provider, GoogleProvider):
+            # Google provider needs a single prompt
+            prompt_parts = [self.CHAT_PROMPT]
+            
+            if conversation_history:
+                prompt_parts.append("\nConversation History:")
+                for msg in conversation_history[-5:]:
+                    role = "Human" if msg["role"] == "user" else "Assistant"
+                    prompt_parts.append(f"{role}: {msg['content']}")
+            
+            prompt_parts.append(f"\nHuman: {query}")
+            prompt_parts.append("\nAssistant:")
+            
+            prompt = "\n".join(prompt_parts)
+        else:
+            # For OpenAI and Anthropic, use the query with system context
+            prompt = f"{self.CHAT_PROMPT}\n\nUser: {query}\n\nAssistant:"
+        
+        try:
+            response = self.provider.generate(prompt, **kwargs)
+            logger.debug(f"Chat response: {response}")
+            return response
+        except Exception as e:
+            logger.error(f"Error generating chat response: {str(e)}")
+            return f"I apologize, but I encountered an error: {str(e)}. Please try again."
     
     def generate_code(self, query: str, context: Dict[str, Any], **kwargs) -> str:
         """

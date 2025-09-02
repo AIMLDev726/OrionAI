@@ -43,6 +43,11 @@ from orionai.python import ui
 ui()  # Opens a web interface at http://localhost:8501
 ```
 
+Or use the powerful CLI for terminal-based coding:
+```bash
+orionai  # Launch interactive CLI with LLM chat and code execution
+```
+
 ## Installation
 
 ```bash
@@ -98,6 +103,68 @@ from orionai.python import InteractiveCodeChat
 code_chat = InteractiveCodeChat(session_name="my_project")
 code_chat.chat("I need to analyze customer behavior patterns")
 code_chat.chat_with_code("Load the dataset and show basic statistics")
+```
+
+## 🖥️ Command Line Interface (CLI)
+
+OrionAI includes a powerful CLI for terminal-based development with LLM integration:
+
+```bash
+# Launch the interactive CLI
+orionai
+```
+
+**CLI Features:**
+- 🤖 **Multi-provider LLM chat** - Google Gemini, OpenAI, Anthropic
+- 🔧 **Live code execution** - Run Python code with real-time output
+- 📊 **Automatic plot saving** - Matplotlib/Seaborn plots saved to session folders
+- 💾 **Session management** - Save and restore conversation history
+- ⚡ **Instant startup** - Optimized lazy loading for fast performance
+- 🛠️ **Error recovery** - LLM automatically fixes syntax errors
+
+**CLI Workflow Example:**
+```bash
+$ orionai
+🚀 OrionAI Interactive Chat
+Select session or create new...
+
+You: Generate random data and create a line plot
+🤖 OrionAI: I'll create random data and visualize it for you.
+
+💻 Generated Code:
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Generate random data
+x = np.linspace(0, 10, 100)
+y = np.random.randn(100).cumsum()
+
+# Create plot
+plt.figure(figsize=(10, 6))
+plt.plot(x, y)
+plt.title("Random Data Line Plot")
+plt.show()
+
+📊 Plot saved: ~/.orionai/sessions/abc123/images/plot_20250902_143022.png
+⏱️ Execution time: 2.34s
+
+You: Now add a trend line to that plot
+🤖 OrionAI: I'll add a polynomial trend line to the existing data...
+```
+
+**CLI Configuration:**
+```bash
+# Configure LLM provider
+orionai config
+
+# View session statistics  
+orionai stats
+
+# List all sessions
+orionai sessions
+```
+
+## What can OrionAI do?
 ```
 
 ### 🌐 Web & API Operations

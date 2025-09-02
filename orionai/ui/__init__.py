@@ -20,6 +20,10 @@ def ui(port: int = 8501, auto_open: bool = True) -> None:
         auto_open (bool): Whether to automatically open the browser (default: True)
     """
     
+    # Ensure Streamlit is available before proceeding
+    if not ensure_streamlit():
+        raise ImportError("Failed to install Streamlit. UI cannot be started.")
+    
     # Get the path to the streamlit_ui.py file
     ui_file = os.path.join(os.path.dirname(__file__), "streamlit_ui.py")
     
@@ -112,10 +116,7 @@ def ensure_streamlit() -> bool:
     print("⚠️  Streamlit not found. Installing...")
     return install_streamlit()
 
-# Auto-install Streamlit when module is imported
-if not check_streamlit_installed():
-    print("🔄 OrionAI Python UI requires Streamlit. Installing...")
-    if not install_streamlit():
-        print("❌ Failed to install Streamlit. UI functionality may not work.")
+# Note: Streamlit will be checked and installed when ui() function is called
+# This prevents import-time blocking behavior
 
 __all__ = ['ui', 'check_streamlit_installed', 'install_streamlit', 'ensure_streamlit']
