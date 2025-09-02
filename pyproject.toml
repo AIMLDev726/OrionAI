@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orionai"
 version = "1.0.0"
-description = "AI-powered Python assistant for natural language coding with CLI and web interface"
+description = "AI-powered Python assistant with intelligent code review, natural language coding, CLI and web interface"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -16,7 +16,8 @@ maintainers = [
 ]
 keywords = [
     "ai", "python", "assistant", "llm", "coding", "automation", 
-    "data-science", "machine-learning", "natural-language"
+    "data-science", "machine-learning", "natural-language",
+    "code-review", "quality-assurance", "security-analysis"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

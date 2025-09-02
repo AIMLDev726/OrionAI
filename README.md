@@ -86,7 +86,19 @@ ai.ask("Create a time series forecast for next quarter's sales")
 ai.ask("Train a model to detect fraud in transactions")
 ```
 
-### 🐍 Python Learning Assistant
+### � AI-Powered Code Review
+```python
+# Review your code with AI intelligence
+ai.ai_code_review("my_script.py", analysis_depth="comprehensive")
+
+# Review entire projects
+ai.ai_code_review("./src", save_report=True)
+
+# Get educational feedback for learning
+ai.ai_code_review("student_code.py", educational_mode=True)
+```
+
+### �🐍 Python Learning Assistant
 ```python
 from orionai.python import SimplePythonChat
 
@@ -121,6 +133,7 @@ orionai
 - 💾 **Session management** - Save and restore conversation history
 - ⚡ **Instant startup** - Optimized lazy loading for fast performance
 - 🛠️ **Error recovery** - LLM automatically fixes syntax errors
+- 🔍 **AI Code Review** - Intelligent code analysis and quality assessment
 
 **CLI Workflow Example:**
 ```bash
@@ -184,7 +197,20 @@ ai.ask("Validate and sanitize user inputs")
 ## Features by Category
 
 <details>
-<summary><strong>📈 Data Science (15+ features)</strong></summary>
+<summary><strong>� AI Code Review & Quality (NEW)</strong></summary>
+
+- AI-powered code analysis and review
+- Security vulnerability detection
+- Performance optimization suggestions
+- Code quality assessment
+- Best practices compliance checking
+- Educational feedback for learning
+- Professional report generation
+
+</details>
+
+<details>
+<summary><strong>�📈 Data Science (15+ features)</strong></summary>
 
 - Pandas operations and analysis
 - Statistical computations with NumPy  

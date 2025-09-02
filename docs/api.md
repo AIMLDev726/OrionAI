@@ -111,6 +111,33 @@ Get practical examples for a Python topic.
 examples = chat.get_examples("list comprehensions")
 ```
 
+##### ai_code_review(file_path: str, output_file: str = None) → str
+Perform comprehensive AI-powered code review with security, performance, and quality analysis.
+
+```python
+ai = AIPython()
+
+# Review a Python file
+report = ai.ai_code_review("my_script.py")
+
+# Save review to custom file
+report = ai.ai_code_review("my_script.py", "review_report.md")
+```
+
+**Parameters:**
+- **file_path** (str): Path to the Python file to review
+- **output_file** (str, optional): Custom output file path for the review report
+
+**Returns:**
+- **str**: Comprehensive code review report in markdown format
+
+**Features:**
+- 🔒 **Security Analysis**: Detects vulnerabilities, exposed secrets, unsafe operations
+- ⚡ **Performance Review**: Identifies bottlenecks, complexity issues, optimization opportunities  
+- ✨ **Code Quality**: Checks structure, readability, maintainability, best practices
+- 📚 **Educational Feedback**: Provides learning resources and improvement suggestions
+- 📄 **Professional Reports**: Generates detailed markdown reports with ratings and recommendations
+
 ##### debug_help(code: str, error: str = None) → str
 Get debugging help for problematic code.
 

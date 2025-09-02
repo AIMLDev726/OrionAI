@@ -1287,6 +1287,312 @@ Provide before/after comparisons and performance metrics.
             }
         }
     
+    def ai_code_review(self, 
+                      file_or_directory: str,
+                      analysis_depth: str = "comprehensive",
+                      output_format: str = "markdown",
+                      educational_mode: bool = True,
+                      save_report: bool = True) -> Any:
+        """
+        AI-powered code review with intelligent analysis and recommendations.
+        
+        This feature uses Large Language Models to perform deep code analysis that goes
+        beyond static analysis to understand code semantics, design patterns, business logic,
+        and provides contextual recommendations.
+        
+        Args:
+            file_or_directory: Path to Python file or directory to review
+            analysis_depth: 'quick', 'standard', 'comprehensive', 'deep'
+            output_format: 'markdown', 'json', 'html'
+            educational_mode: Include learning explanations for students
+            save_report: Save detailed report to file
+            
+        Returns:
+            AI code review results with detailed analysis and recommendations
+        """
+        from pathlib import Path
+        from ..core.ai_code_reviewer import AICodeReviewer
+        
+        # Initialize AI reviewer with current LLM provider
+        config = {
+            "analysis_depth": analysis_depth,
+            "educational_mode": educational_mode,
+            "focus_areas": ["security", "performance", "maintainability", "design", "best_practices"],
+            "review_style": "constructive",
+            "include_fixes": True
+        }
+        
+        reviewer = AICodeReviewer(llm_provider=self.llm_provider, config=config)
+        path = Path(file_or_directory)
+        
+        if path.is_file():
+            # Review single file
+            if self.verbose:
+                self._log_info(f"🤖 Starting AI code review for: {path.name}")
+            
+            try:
+                review = reviewer.review_code(path)
+                report = reviewer.generate_report(review, format=output_format)
+                
+                # Display results with rich formatting
+                self._log_success("AI Code Review Complete!")
+                self._log_info(f"📊 Overall Score: {review.overall_score:.1f}/100 ({review.grade})")
+                self._log_info(f"🐛 Issues Found: {len(review.issues)}")
+                self._log_info(f"✅ Strengths: {len(review.strengths)}")
+                self._log_info(f"🔧 Improvements: {len(review.improvements)}")
+                self._log_info(f"🎓 Learning Points: {len(review.learning_points)}")
+                
+                # Show metrics summary
+                print(f"\n📈 AI Analysis Metrics:")
+                print(f"   Readability: {review.metrics.readability_score:.0f}/100")
+                print(f"   Maintainability: {review.metrics.maintainability_score:.0f}/100")
+                print(f"   Design Quality: {review.metrics.design_quality:.0f}/100")
+                print(f"   Security: {review.metrics.security_assessment.title()}")
+                print(f"   Performance: {review.metrics.performance_assessment.title()}")
+                
+                # Show top issues
+                if review.issues:
+                    critical_high = [i for i in review.issues if i.severity in ['critical', 'high']]
+                    if critical_high:
+                        print(f"\n🚨 Priority Issues:")
+                        for issue in critical_high[:3]:
+                            print(f"  • Line {issue.line_number}: {issue.message}")
+                            print(f"    Category: {issue.category} | Impact: {issue.impact}")
+                
+                # Show strengths
+                if review.strengths:
+                    print(f"\n✅ Code Strengths:")
+                    for strength in review.strengths[:3]:
+                        print(f"  • {strength}")
+                
+                # Show top recommendations
+                if review.recommendations:
+                    print(f"\n💡 Top Recommendations:")
+                    for rec in review.recommendations[:3]:
+                        print(f"  • {rec}")
+                
+                # Save report
+                if save_report:
+                    report_path = self.workspace_dir / f"{path.stem}_ai_review.{output_format.split('_')[0]}"
+                    report_path.write_text(report, encoding='utf-8')
+                    self._log_success(f"Report saved: {report_path}")
+                    self.saved_files.append(str(report_path))
+                
+                return {
+                    "review": review,
+                    "report": report,
+                    "report_path": str(report_path) if save_report else None,
+                    "summary": {
+                        "score": review.overall_score,
+                        "grade": review.grade,
+                        "issues_count": len(review.issues),
+                        "critical_issues": len([i for i in review.issues if i.severity == 'critical']),
+                        "strengths_count": len(review.strengths),
+                        "recommendations_count": len(review.recommendations)
+                    }
+                }
+                
+            except Exception as e:
+                self._log_error(f"AI code review failed: {e}")
+                # Try fallback basic review
+                if self.verbose:
+                    print("🔄 Attempting fallback analysis...")
+                
+                try:
+                    # Basic code analysis without AI
+                    with open(path, 'r') as f:
+                        code_content = f.read()
+                    
+                    lines = code_content.split('\n')
+                    loc = len([line for line in lines if line.strip() and not line.strip().startswith('#')])
+                    
+                    basic_analysis = {
+                        "file_path": str(path),
+                        "lines_of_code": loc,
+                        "basic_issues": [],
+                        "recommendations": [
+                            "Enable AI analysis for comprehensive review",
+                            "Check code syntax and basic style",
+                            "Add documentation and comments"
+                        ]
+                    }
+                    
+                    # Simple checks
+                    for i, line in enumerate(lines, 1):
+                        if len(line) > 100:
+                            basic_analysis["basic_issues"].append(f"Line {i}: Line too long ({len(line)} chars)")
+                        if 'print(' in line and not line.strip().startswith('#'):
+                            basic_analysis["basic_issues"].append(f"Line {i}: Consider using logging instead of print")
+                    
+                    print(f"\n📋 Basic Analysis Results:")
+                    print(f"   Lines of Code: {loc}")
+                    print(f"   Basic Issues: {len(basic_analysis['basic_issues'])}")
+                    
+                    if basic_analysis["basic_issues"]:
+                        print(f"\n⚠️ Basic Issues Found:")
+                        for issue in basic_analysis["basic_issues"][:5]:
+                            print(f"  • {issue}")
+                    
+                    return {
+                        "basic_analysis": basic_analysis,
+                        "error": "AI analysis failed, basic analysis performed",
+                        "recommendation": "Check LLM provider configuration for full AI review"
+                    }
+                    
+                except Exception as fallback_error:
+                    self._log_error(f"Fallback analysis also failed: {fallback_error}")
+                    return {"error": str(e), "fallback_error": str(fallback_error)}
+        
+        elif path.is_dir():
+            # Review directory
+            if self.verbose:
+                self._log_info(f"🤖 Starting AI code review for directory: {path.name}")
+            
+            try:
+                reviews = reviewer.review_directory(path)
+                
+                if not reviews:
+                    self._log_warning("No Python files found to review")
+                    return {"reviews": {}, "summary": "No Python files found"}
+                
+                # Calculate summary statistics
+                total_score = sum(r.overall_score for r in reviews.values()) / len(reviews)
+                total_issues = sum(len(r.issues) for r in reviews.values())
+                critical_issues = sum(len([i for i in r.issues if i.severity == 'critical']) for r in reviews.values())
+                high_issues = sum(len([i for i in r.issues if i.severity == 'high']) for r in reviews.values())
+                
+                # Display summary
+                self._log_success("Directory AI Review Complete!")
+                self._log_info(f"📁 Files Reviewed: {len(reviews)}")
+                self._log_info(f"📊 Average Score: {total_score:.1f}/100")
+                self._log_info(f"🐛 Total Issues: {total_issues}")
+                if critical_issues > 0:
+                    self._log_warning(f"🚨 Critical Issues: {critical_issues}")
+                if high_issues > 0:
+                    print(f"🔴 High Priority Issues: {high_issues}")
+                
+                # Show file rankings
+                sorted_reviews = sorted(reviews.items(), key=lambda x: x[1].overall_score, reverse=True)
+                print(f"\n📊 File Rankings (by score):")
+                for i, (file_path, review) in enumerate(sorted_reviews[:5], 1):
+                    file_name = Path(file_path).name
+                    print(f"  {i}. {file_name}: {review.overall_score:.1f}/100 ({review.grade})")
+                
+                # Generate comprehensive summary report
+                summary_report = f"# 🤖 AI Code Review Summary\n\n"
+                summary_report += f"**Directory**: {path}\n"
+                summary_report += f"**Review Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                summary_report += f"**Files Reviewed**: {len(reviews)}\n"
+                summary_report += f"**Average Score**: {total_score:.1f}/100\n"
+                summary_report += f"**Total Issues**: {total_issues}\n"
+                summary_report += f"**Critical Issues**: {critical_issues}\n"
+                summary_report += f"**High Priority Issues**: {high_issues}\n\n"
+                
+                # Overall recommendations
+                all_recommendations = set()
+                for review in reviews.values():
+                    all_recommendations.update(review.recommendations)
+                
+                if all_recommendations:
+                    summary_report += "## 💡 Overall Recommendations\n\n"
+                    for rec in list(all_recommendations)[:10]:
+                        summary_report += f"- {rec}\n"
+                    summary_report += "\n"
+                
+                # Top issues across all files
+                all_issues = []
+                for file_path, review in reviews.items():
+                    for issue in review.issues:
+                        issue_with_file = {
+                            "file": Path(file_path).name,
+                            "severity": issue.severity,
+                            "message": issue.message,
+                            "line": issue.line_number,
+                            "category": issue.category,
+                            "confidence": issue.confidence
+                        }
+                        all_issues.append(issue_with_file)
+                
+                critical_high_issues = [i for i in all_issues if i['severity'] in ['critical', 'high']]
+                if critical_high_issues:
+                    summary_report += "## 🚨 Priority Issues Across All Files\n\n"
+                    sorted_issues = sorted(critical_high_issues, key=lambda x: (x['severity'] == 'critical', x['confidence']), reverse=True)
+                    for issue in sorted_issues[:15]:
+                        summary_report += f"- **{issue['severity'].title()}** in `{issue['file']}` (Line {issue['line']}): {issue['message']}\n"
+                    summary_report += "\n"
+                
+                # File-by-file summary
+                summary_report += "## 📁 File-by-File Analysis\n\n"
+                for file_path, review in sorted_reviews:
+                    file_name = Path(file_path).name
+                    summary_report += f"### {file_name}\n"
+                    summary_report += f"- **Score**: {review.overall_score:.1f}/100 ({review.grade})\n"
+                    summary_report += f"- **Issues**: {len(review.issues)} total"
+                    if review.issues:
+                        critical_count = len([i for i in review.issues if i.severity == 'critical'])
+                        high_count = len([i for i in review.issues if i.severity == 'high'])
+                        if critical_count > 0:
+                            summary_report += f" ({critical_count} critical"
+                        if high_count > 0:
+                            summary_report += f", {high_count} high)" if critical_count > 0 else f" ({high_count} high)"
+                        else:
+                            summary_report += ")" if critical_count > 0 else ""
+                    summary_report += "\n"
+                    summary_report += f"- **Readability**: {review.metrics.readability_score:.0f}/100\n"
+                    summary_report += f"- **Maintainability**: {review.metrics.maintainability_score:.0f}/100\n"
+                    if review.strengths:
+                        summary_report += f"- **Top Strength**: {review.strengths[0]}\n"
+                    if review.recommendations:
+                        summary_report += f"- **Key Recommendation**: {review.recommendations[0]}\n"
+                    summary_report += "\n"
+                
+                # Save reports
+                if save_report:
+                    # Create reports directory
+                    report_dir = self.workspace_dir / "ai_code_reviews"
+                    report_dir.mkdir(exist_ok=True)
+                    
+                    # Save individual reports
+                    individual_reports = {}
+                    for file_path, review in reviews.items():
+                        report = reviewer.generate_report(review, format=output_format)
+                        file_name = Path(file_path).stem
+                        report_path = report_dir / f"{file_name}_ai_review.{output_format.split('_')[0]}"
+                        report_path.write_text(report, encoding='utf-8')
+                        individual_reports[file_path] = str(report_path)
+                        self.saved_files.append(str(report_path))
+                    
+                    # Save summary
+                    summary_path = report_dir / f"summary.{output_format.split('_')[0]}"
+                    summary_path.write_text(summary_report, encoding='utf-8')
+                    self.saved_files.append(str(summary_path))
+                    
+                    self._log_success(f"Reports saved to: {report_dir}")
+                    print(f"   📄 Summary: {summary_path.name}")
+                    print(f"   📄 Individual reports: {len(individual_reports)} files")
+                
+                return {
+                    "reviews": reviews,
+                    "summary_report": summary_report,
+                    "statistics": {
+                        "files_reviewed": len(reviews),
+                        "average_score": total_score,
+                        "total_issues": total_issues,
+                        "critical_issues": critical_issues,
+                        "high_issues": high_issues,
+                        "best_file": max(reviews.items(), key=lambda x: x[1].overall_score)[0] if reviews else None,
+                        "worst_file": min(reviews.items(), key=lambda x: x[1].overall_score)[0] if reviews else None
+                    },
+                    "report_directory": str(report_dir) if save_report else None
+                }
+                
+            except Exception as e:
+                self._log_error(f"Directory AI review failed: {e}")
+                return {"error": str(e), "recommendation": "Check LLM provider configuration and try individual files"}
+        
+        else:
+            raise ValueError(f"Path does not exist: {path}")
+    
     def __repr__(self) -> str:
         return f"AIPython(provider={self.provider_name}, model={self.model_name}, environment={self.environment}, operations={len(self.execution_history)}, workspace={self.workspace_dir.name})"
 

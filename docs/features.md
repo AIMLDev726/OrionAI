@@ -9,6 +9,7 @@ OrionAI Python provides 50+ advanced features across multiple domains. Here's a 
 - **Automatic Code Execution**: Safe execution environment with error handling
 - **Code Optimization**: AI-powered code improvement suggestions
 - **Error Debugging**: Intelligent error analysis and fix suggestions
+- **AI Code Review**: Comprehensive code review with security, performance, and quality analysis
 
 ### Multi-Provider LLM Support
 - **Google Gemini**: Default provider with Gemini 1.5 Pro/Flash models
@@ -199,7 +200,43 @@ OrionAI Python provides 50+ advanced features across multiple domains. Here's a 
 - **Batch Operations**: Bulk data processing
 - **Monitoring**: Progress tracking and notifications
 
-## 🚀 Getting Started with Features
+## � AI Code Review & Quality Assurance
+
+### Intelligent Code Analysis
+- **Security Vulnerability Detection**: Identifies potential security risks, SQL injection, XSS vulnerabilities
+- **Performance Optimization**: Spots inefficient algorithms, memory leaks, and bottlenecks
+- **Code Quality Assessment**: Evaluates readability, maintainability, and adherence to best practices
+- **Best Practices Compliance**: Checks PEP 8 standards, design patterns, and Python conventions
+- **Educational Feedback**: Provides learning-oriented explanations for students and beginners
+
+### Advanced Review Features
+- **Line-Specific Analysis**: Pinpoints exact locations of issues with detailed explanations
+- **Contextual Understanding**: Goes beyond static analysis to understand business logic and intent
+- **Multi-Category Assessment**: Covers security, performance, maintainability, and architectural concerns
+- **Actionable Recommendations**: Provides specific, implementable fixes for identified issues
+- **Professional Reporting**: Generates comprehensive markdown reports with structured findings
+
+```python
+from orionai.python import AIPython
+
+ai = AIPython()
+
+# Review a single file
+review = ai.ai_code_review(
+    file_or_directory="my_script.py",
+    analysis_depth="comprehensive",
+    output_format="markdown"
+)
+
+# Review entire directory
+review = ai.ai_code_review(
+    file_or_directory="./src",
+    analysis_depth="standard",
+    save_report=True
+)
+```
+
+## �🚀 Getting Started with Features
 
 Each feature is accessible through the main `AIPython` class:
 
@@ -227,5 +264,6 @@ result = ai.ask("Generate a report with charts and statistics")
 | **Security** | 5+ features | `ai.ask("Encrypt sensitive data")` |
 | **Performance** | 4+ features | `ai.ask("Monitor system performance")` |
 | **Text Processing** | 8+ features | `ai.ask("Analyze document sentiment")` |
+| **Code Review** | AI-powered | `ai.ai_code_review("my_file.py")` |
 
 All features are designed to work together seamlessly, providing a comprehensive Python AI assistant for any task!

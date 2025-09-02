@@ -36,7 +36,7 @@ setup(
     version="0.1.0",
     author="AIMLDev726", 
     author_email="aistudentlearn4@gmail.com",
-    description="AI-Powered Python Assistant with 50+ Advanced Features",
+    description="AI-Powered Python Assistant with Code Review, Data Science, and 50+ Advanced Features",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/AIMLDev726/OrionAI",
@@ -55,6 +55,9 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development :: Code Generators",
+        "Topic :: Software Development :: Quality Assurance",
+        "Topic :: Software Development :: Testing",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Scientific/Engineering :: Information Analysis",
         "Topic :: Scientific/Engineering :: Visualization",
@@ -95,6 +98,7 @@ setup(
     keywords=[
         "ai", "machine-learning", "data-science", "automation", "llm",
         "python-assistant", "code-generation", "data-analysis", "visualization",
+        "code-review", "quality-assurance", "security-analysis", "performance-optimization",
         "streamlit", "pandas", "scikit-learn", "openai", "gemini", "anthropic"
     ],
     project_urls={
