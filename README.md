@@ -1,24 +1,7 @@
 # 🚀 OrionAI Python - Your AI Coding Companion
 
 [![PyPI version](https://img.shields.io/pypi/v/orionai.svg)](https://pypi.org/project/orionai/)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python## Features by Category
-
-<details>
-<summary><strong>🔌 MCP Server Management (NEW)</strong></summary>
-
-- Access to 396+ external MCP servers
-- Interactive menu-driven server browsing
-- Category-based organization (Search, Dev Tools, Databases, etc.)
-- Batch server selection and installation
-- Automatic dependency management (Node.js, Python, Docker)
-- API key configuration and management
-- Claude Desktop integration file generation
-- Support for NPM, PyPI, and OCI registry servers
-
-</details>
-
-<details>
-<summary><strong>🔍 AI Code Review & Quality (NEW)</strong></summary>/downloads/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red.svg)](https://streamlit.io/)
 
@@ -127,7 +110,7 @@ ai.ask("Create a time series forecast for next quarter's sales")
 ai.ask("Train a model to detect fraud in transactions")
 ```
 
-### � AI-Powered Code Review
+### 🔍 AI-Powered Code Review
 ```python
 # Review your code with AI intelligence
 ai.ai_code_review("my_script.py", analysis_depth="comprehensive")
@@ -139,7 +122,7 @@ ai.ai_code_review("./src", save_report=True)
 ai.ai_code_review("student_code.py", educational_mode=True)
 ```
 
-### �🐍 Python Learning Assistant
+### 🐍 Python Learning Assistant
 ```python
 from orionai.python import SimplePythonChat
 
@@ -156,6 +139,29 @@ from orionai.python import InteractiveCodeChat
 code_chat = InteractiveCodeChat(session_name="my_project")
 code_chat.chat("I need to analyze customer behavior patterns")
 code_chat.chat_with_code("Load the dataset and show basic statistics")
+```
+
+### 🔌 MCP Server Integration
+```python
+# Access 396+ external MCP servers through CLI
+# Web search, databases, APIs, calculators, and more!
+ai.ask("Search for recent papers on machine learning")
+ai.ask("Get weather data for New York")
+ai.ask("Calculate complex mathematical expressions")
+```
+
+### 🌐 Web & API Operations
+```python
+ai.ask("Scrape product prices from this e-commerce site")
+ai.ask("Call this REST API and analyze the response")
+ai.ask("Download and process data from multiple URLs")
+```
+
+### 🔒 Security & Encryption
+```python
+ai.ask("Generate secure passwords and hash them")
+ai.ask("Encrypt this sensitive data file")
+ai.ask("Validate and sanitize user inputs")
 ```
 
 ## 🖥️ Command Line Interface (CLI)
@@ -219,36 +225,24 @@ orionai stats
 orionai sessions
 ```
 
-## What can OrionAI do?
-```
-
-### 🔌 MCP Server Integration
-```python
-# Access 396+ external MCP servers through CLI
-# Web search, databases, APIs, calculators, and more!
-ai.ask("Search for recent papers on machine learning")
-ai.ask("Get weather data for New York")
-ai.ask("Calculate complex mathematical expressions")
-```
-
-### 🌐 Web & API Operations
-```python
-ai.ask("Scrape product prices from this e-commerce site")
-ai.ask("Call this REST API and analyze the response")
-ai.ask("Download and process data from multiple URLs")
-```
-
-### 🔒 Security & Encryption
-```python
-ai.ask("Generate secure passwords and hash them")
-ai.ask("Encrypt this sensitive data file")
-ai.ask("Validate and sanitize user inputs")
-```
-
 ## Features by Category
 
 <details>
-<summary><strong>� AI Code Review & Quality (NEW)</strong></summary>
+<summary><strong>🔌 MCP Server Management (NEW)</strong></summary>
+
+- Access to 396+ external MCP servers
+- Interactive menu-driven server browsing
+- Category-based organization (Search, Dev Tools, Databases, etc.)
+- Batch server selection and installation
+- Automatic dependency management (Node.js, Python, Docker)
+- API key configuration and management
+- Claude Desktop integration file generation
+- Support for NPM, PyPI, and OCI registry servers
+
+</details>
+
+<details>
+<summary><strong>🔍 AI Code Review & Quality (NEW)</strong></summary>
 
 - AI-powered code analysis and review
 - Security vulnerability detection
@@ -261,7 +255,7 @@ ai.ask("Validate and sanitize user inputs")
 </details>
 
 <details>
-<summary><strong>�📈 Data Science (15+ features)</strong></summary>
+<summary><strong>📈 Data Science (15+ features)</strong></summary>
 
 - Pandas operations and analysis
 - Statistical computations with NumPy  
