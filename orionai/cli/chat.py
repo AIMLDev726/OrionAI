@@ -6,15 +6,14 @@ Rich CLI interface for interactive LLM chat with real-time code execution.
 """
 
 import sys
-import os
 import io
 import contextlib
+import logging
 import traceback
 import subprocess
-import json
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import  Optional, Tuple, List
 from datetime import datetime
 
 from rich.console import Console
@@ -24,14 +23,14 @@ from rich.prompt import Prompt, Confirm
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.layout import Layout
-from rich.live import Live
-from rich.align import Align
-from rich.text import Text
 
 from ..core.llm_interface import LLMInterface, OpenAIProvider, AnthropicProvider, GoogleProvider
 from .session import SessionManager, CodeExecution
 from .config import ConfigManager
+from .code_approval import CodeApprovalManager
+from ..mcp.manager import MCPManager
+
+logger = logging.getLogger(__name__)
 
 
 class CodeExecutor:
@@ -40,6 +39,7 @@ class CodeExecutor:
     def __init__(self, session_manager: SessionManager, config_manager: ConfigManager):
         self.session_manager = session_manager
         self.config_manager = config_manager
+        self.code_approval = CodeApprovalManager()
         self.globals_dict = {
             '__builtins__': __builtins__,
         }
@@ -107,17 +107,31 @@ class CodeExecutor:
     
     def execute_code(self, code: str) -> CodeExecution:
         """Execute Python code safely and capture output."""
+        # First, get approval from user before executing code
+        approved, final_code = self.code_approval.get_user_approval(code)
+        
+        if not approved:
+            return CodeExecution(
+                code=code,
+                output="",
+                error="Code execution was not approved by user",
+                execution_time=0.0
+            )
+        
+        # Use the potentially modified code from approval process
+        # final_code is already set from the approval process above
+        
         # Setup basic environment first
         self.setup_environment()
         
         # Check for common imports and add them on demand
-        if 'np.' in code or 'numpy' in code:
+        if 'np.' in final_code or 'numpy' in final_code:
             self._add_module_on_demand('np')
-        if 'pd.' in code or 'pandas' in code:
+        if 'pd.' in final_code or 'pandas' in final_code:
             self._add_module_on_demand('pd')
-        if 'plt.' in code or 'matplotlib' in code:
+        if 'plt.' in final_code or 'matplotlib' in final_code:
             self._add_module_on_demand('plt')
-        if 'sns.' in code or 'seaborn' in code:
+        if 'sns.' in final_code or 'seaborn' in final_code:
             self._add_module_on_demand('sns')
         
         # Capture stdout and stderr
@@ -152,7 +166,7 @@ class CodeExecutor:
                  contextlib.redirect_stderr(stderr_capture):
                 
                 # Clean and prepare code for execution
-                modified_code = code.strip()
+                modified_code = final_code.strip()
                 
                 # Replace plt.show() with plt.savefig() and save path info
                 if 'plt.show()' in modified_code:
@@ -222,7 +236,7 @@ class CodeExecutor:
             execution_error = error_output
         
         return CodeExecution(
-            code=code,
+            code=final_code,  # Use the final approved/modified code
             output=output,
             error=execution_error,
             execution_time=execution_time,
@@ -247,7 +261,17 @@ class InteractiveChatSession:
         self.console = Console()
         self.llm_interface = None
         self.code_executor = None
+        self.mcp_manager = None
         self._llm_setup_attempted = False
+        
+        # Initialize MCP if enabled
+        if config_manager.config.session.enable_mcp and config_manager.config.mcp.enabled:
+            try:
+                self.mcp_manager = MCPManager(config_manager.config_dir)
+                if config_manager.config.mcp.auto_connect:
+                    self.mcp_manager.connect_all_servers()
+            except Exception as e:
+                self.console.print(f"⚠️  MCP initialization warning: {e}", style="yellow")
     
     def setup_llm(self):
         """Setup LLM provider based on configuration (lazy initialization)."""
@@ -273,7 +297,7 @@ class InteractiveChatSession:
                 self.console.print(f"❌ Unknown provider: {config.provider}", style="red")
                 return False
             
-            self.llm_interface = LLMInterface(provider)
+            self.llm_interface = LLMInterface(provider, self.mcp_manager)
             self.code_executor = CodeExecutor(self.session_manager, self.config_manager)
             return True
         except Exception as e:
@@ -387,7 +411,7 @@ class InteractiveChatSession:
         
         return None
     
-    def _enhance_prompt_for_code(self, user_input: str) -> str:
+    def _enhance_prompt_for_code(self, user_input: str, search_context: str = "") -> str:
         """Enhance user prompt with specific instructions for code generation."""
         # Keywords that suggest code is needed
         code_keywords = [
@@ -400,6 +424,8 @@ class InteractiveChatSession:
         if needs_code:
             enhanced_prompt = f"""{user_input}
 
+{search_context}
+
 IMPORTANT INSTRUCTIONS FOR CODE GENERATION:
 - When providing Python code, ensure it is properly formatted and syntactically correct
 - Use proper indentation (4 spaces for each level)
@@ -409,14 +435,139 @@ IMPORTANT INSTRUCTIONS FOR CODE GENERATION:
 - Include necessary imports at the top
 - Use meaningful variable names
 - Add brief comments to explain key steps
+- If web search results are provided above, incorporate that current information
 
 Please provide working Python code that can be executed directly."""
             return enhanced_prompt
         
+        # For non-code queries, still include search context if available
+        if search_context:
+            enhanced_prompt = f"""{user_input}
+
+{search_context}
+
+IMPORTANT: Based on the web search results above, provide a comprehensive and helpful response. 
+Summarize the key information from the search results and answer the user's question directly. 
+Do not just repeat the search results - synthesize them into a useful answer."""
+            return enhanced_prompt
+        
+        return user_input
+        
         return user_input
     
+    def _needs_web_search(self, query: str) -> bool:
+        """Dynamically determine if query needs web search using LLM decision."""
+        
+        # Quick hardcoded check for explicit search requests
+        explicit_search = ['search for', 'google', 'web search', 'search the web', 'find online']
+        if any(term in query.lower() for term in explicit_search):
+            return True
+        
+        # Quick hardcoded check for obvious calculations (priority)
+        calc_patterns = ['2+2', '3+5', '10*5', 'calculate', 'what is', 'solve']
+        if any(pattern in query.lower() for pattern in calc_patterns):
+            # Check if it's a simple math problem
+            import re
+            math_pattern = r'\b\d+\s*[\+\-\*\/]\s*\d+'
+            if re.search(math_pattern, query):
+                return False  # Use MCP tools for calculations
+        
+        # Use LLM to dynamically decide
+        return self._llm_decide_web_search(query)
+    
+    def _llm_decide_web_search(self, query: str) -> bool:
+        """Use LLM to dynamically decide if web search is needed."""
+        try:
+            decision_prompt = f"""
+Analyze this user query and determine if it requires web search or can be handled with internal tools.
+
+User Query: "{query}"
+
+Consider these factors:
+- Does it need current/real-time information (news, weather, stock prices, sports scores)?
+- Does it ask about recent events or current status of something?
+- Does it ask about specific people, places, or organizations that might have current info?
+- Is it asking for factual information that changes over time?
+- Does it explicitly request web search?
+
+DO NOT use web search for:
+- Simple calculations (2+2, math problems)
+- General programming questions
+- Code generation requests
+- Basic definitions that don't change
+- Personal requests or conversations
+
+Respond with only "YES" if web search is needed, or "NO" if internal tools can handle it.
+
+Decision:"""
+
+            # Use a simple LLM call for decision
+            if self.llm_interface:
+                try:
+                    response = self.llm_interface.generate_chat_response(
+                        decision_prompt,
+                        conversation_history=[],
+                        temperature=0.1,  # Low temperature for consistent decisions
+                        max_tokens=10
+                    )
+                    
+                    decision = response.strip().upper()
+                    if "YES" in decision:
+                        return True
+                    elif "NO" in decision:
+                        return False
+                        
+                except Exception as e:
+                    logger.error(f"LLM decision error: {e}")
+            
+            # Fallback to basic heuristics if LLM fails
+            return self._fallback_search_decision(query)
+            
+        except Exception as e:
+            logger.error(f"Error in LLM web search decision: {e}")
+            return self._fallback_search_decision(query)
+    
+    def _fallback_search_decision(self, query: str) -> bool:
+        """Fallback decision logic if LLM is unavailable."""
+        query_lower = query.lower()
+        
+        # Current info indicators
+        current_indicators = [
+            'latest', 'recent', 'current', 'today', 'news', 'now',
+            'weather', 'temperature', 'stock', 'price', 'score'
+        ]
+        
+        # Location-based
+        location_indicators = ['in ', 'at ', 'weather in', 'time in']
+        
+        # Check for current info needs
+        if any(indicator in query_lower for indicator in current_indicators):
+            return True
+            
+        # Check for location-based queries
+        if any(indicator in query_lower for indicator in location_indicators):
+            return True
+        
+        # Default: no web search needed - use MCP servers instead
+        return False
+    
+    def _perform_web_search(self, query: str) -> str:
+        """Web search now handled by MCP servers."""
+        self.console.print("ℹ️  Web search is now available through MCP servers.", style="blue")
+        self.console.print("💡 Install web search MCP servers using CLI menu option 5.", style="dim")
+        return ""
+    
     def process_llm_response(self, response: str) -> Tuple[str, List[str]]:
-        """Process LLM response and extract code blocks."""
+        """Process LLM response and extract code blocks or handle tool calls."""
+        
+        # First check if this is a tool call (JSON response)
+        if self._is_tool_call(response):
+            tool_result = self._handle_tool_call(response)
+            if tool_result:
+                # Return the tool result as the response
+                return tool_result, []
+        
+        # If not a tool call, process normally for code blocks
         code_blocks = self.extract_code_blocks(response)
         
         # Remove code blocks from response for display - use better approach
@@ -435,6 +586,190 @@ Please provide working Python code that can be executed directly."""
         text_without_code = re.sub(r'\n\s*\n\s*\n', '\n\n', text_without_code)
         
         return text_without_code.strip(), code_blocks
+    
+    def _is_tool_call(self, response: str) -> bool:
+        """Check if response contains a tool call (JSON with action: use_tool)."""
+        try:
+            # Look for JSON patterns in the response
+            import json
+            
+            # Try to find JSON in the response using brace counting
+            json_found = False
+            
+            # Quick check for JSON patterns
+            if '"action"' in response and '"use_tool"' in response:
+                # Look for opening brace
+                for i, char in enumerate(response):
+                    if char == '{':
+                        # Check if this contains our action
+                        remaining = response[i:]
+                        if '"action"' in remaining and '"use_tool"' in remaining:
+                            json_found = True
+                            break
+            
+            if json_found:
+                return True
+            
+            # Also try to parse the entire response as JSON
+            response_clean = response.strip()
+            if response_clean.startswith('{') and response_clean.endswith('}'):
+                try:
+                    parsed = json.loads(response_clean)
+                    if isinstance(parsed, dict) and parsed.get('action') == 'use_tool':
+                        return True
+                except:
+                    pass
+            
+            # Check for incomplete JSON (missing opening brace)
+            if '"action"' in response and '"use_tool"' in response:
+                return True
+                    
+            return False
+            
+        except Exception:
+            return False
+    
+    def _handle_tool_call(self, response: str) -> Optional[str]:
+        """Handle tool call from LLM response."""
+        try:
+            import json
+            
+            # Extract JSON from response
+            json_match = None
+            
+            # First try parsing entire response as JSON
+            response_clean = response.strip()
+            if response_clean.startswith('{') and response_clean.endswith('}'):
+                try:
+                    json.loads(response_clean)  # Test if valid
+                    json_match = response_clean
+                except:
+                    pass
+            
+            # If not found, look for JSON pattern using brace counting
+            if not json_match:
+                # Find JSON start
+                json_start = -1
+                for i, char in enumerate(response):
+                    if char == '{':
+                        # Check if this looks like our JSON
+                        remaining = response[i:]
+                        if '"action"' in remaining and '"use_tool"' in remaining:
+                            json_start = i
+                            break
+                
+                if json_start >= 0:
+                    # Count braces to find the end
+                    brace_count = 0
+                    json_end = -1
+                    
+                    for i in range(json_start, len(response)):
+                        if response[i] == '{':
+                            brace_count += 1
+                        elif response[i] == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_end = i + 1
+                                break
+                    
+                    if json_end > json_start:
+                        json_match = response[json_start:json_end]
+            
+            # Handle case where JSON is missing opening brace or closing braces
+            if not json_match and '"action"' in response and '"use_tool"' in response:
+                # Try to reconstruct the JSON
+                response_lines = response.strip().split('\n')
+                json_lines = []
+                in_json = False
+                
+                for line in response_lines:
+                    if '"action"' in line or in_json:
+                        in_json = True
+                        json_lines.append(line.strip())
+                        if line.strip().endswith('}'):
+                            break
+                
+                if json_lines:
+                    json_text = '\n'.join(json_lines)
+                    
+                    # Add opening brace if missing
+                    if not json_text.startswith('{'):
+                        json_text = '{' + json_text
+                    
+                    # Count and balance braces
+                    open_braces = json_text.count('{')
+                    close_braces = json_text.count('}')
+                    
+                    # Add missing closing braces
+                    while close_braces < open_braces:
+                        json_text += '}'
+                        close_braces += 1
+                    
+                    json_match = json_text
+            
+            if not json_match:
+                return None
+            
+            # Parse the JSON
+            try:
+                tool_call = json.loads(json_match)
+            except json.JSONDecodeError as e:
+                self.console.print(f"❌ Invalid JSON in tool call: {e}", style="red")
+                self.console.print(f"JSON attempted: {json_match}", style="yellow")
+                return None
+            
+            # Validate tool call structure
+            if not isinstance(tool_call, dict) or tool_call.get('action') != 'use_tool':
+                return None
+            
+            # Check if MCP is available
+            if not self.mcp_manager:
+                return "❌ MCP tools are not enabled. Please enable MCP in settings."
+            
+            # Extract tool information
+            tool_name = tool_call.get('tool_name') or tool_call.get('arguments', {}).get('tool_name')
+            arguments = tool_call.get('arguments', {})
+            
+            # Handle different argument structures
+            if 'expression' in arguments:
+                # Calculator tool
+                tool_name = 'calculate'
+                calc_args = {'expression': arguments['expression']}
+            elif 'query' in arguments:
+                # Search tool  
+                tool_name = 'web_search'
+                calc_args = {'query': arguments['query']}
+            else:
+                calc_args = arguments
+            
+            if not tool_name:
+                return "❌ No tool name specified in tool call."
+            
+            self.console.print(f"🔧 Using MCP tool: {tool_name}", style="cyan")
+            
+            # Call the MCP tool
+            try:
+                result = self.mcp_manager.call_tool(tool_name, calc_args)
+                
+                # Format the result nicely
+                if isinstance(result, dict):
+                    if 'result' in result:
+                        formatted_result = f"✅ Tool result: {result['result']}"
+                    else:
+                        formatted_result = f"✅ Tool result: {json.dumps(result, indent=2)}"
+                else:
+                    formatted_result = f"✅ Tool result: {result}"
+                
+                return formatted_result
+                
+            except Exception as e:
+                error_msg = f"❌ Tool execution failed: {str(e)}"
+                self.console.print(error_msg, style="red")
+                return error_msg
+            
+        except Exception as e:
+            self.console.print(f"❌ Error handling tool call: {e}", style="red")
+            return f"❌ Error processing tool call: {str(e)}"
     
     def display_message(self, content: str, role: str = "assistant", message_type: str = "text"):
         """Display a message with proper formatting."""
@@ -495,6 +830,30 @@ Please provide working Python code that can be executed directly."""
                 title_align="left", 
                 style="cyan"
             ))
+            
+            # For image files, offer to open them
+            image_files = [f for f in execution.files_created if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+            if image_files:
+                self.console.print("🖼️  Image files created! Opening the first one...", style="blue")
+                try:
+                    import os
+                    import sys
+                    first_image = image_files[0]
+                    
+                    # Try to open the image file
+                    if sys.platform.startswith('win'):
+                        os.startfile(first_image)
+                    elif sys.platform.startswith('darwin'):  # macOS
+                        import subprocess
+                        subprocess.run(['open', first_image])
+                    else:  # Linux
+                        import subprocess
+                        subprocess.run(['xdg-open', first_image])
+                    
+                    self.console.print(f"📂 Opened: {Path(first_image).name}", style="green")
+                except Exception as e:
+                    self.console.print(f"⚠️  Could not open image: {e}", style="yellow")
+                    self.console.print(f"💡 Please manually open: {first_image}", style="blue")
         
         # Show execution time
         self.console.print(f"⏱️  Execution time: {execution.execution_time:.2f}s")
@@ -590,8 +949,13 @@ Please provide the corrected code:
                 })
         
         try:
+            # Check if web search is needed
+            search_context = ""
+            if self._needs_web_search(user_input):
+                search_context = self._perform_web_search(user_input)
+            
             # Enhance the prompt for better code generation
-            enhanced_prompt = self._enhance_prompt_for_code(user_input)
+            enhanced_prompt = self._enhance_prompt_for_code(user_input, search_context)
             
             # Get LLM response using flexible chat method
             with Progress(

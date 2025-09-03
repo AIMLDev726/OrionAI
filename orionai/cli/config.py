@@ -7,11 +7,9 @@ Handles API keys, preferences, and settings storage.
 
 import os
 import json
-import yaml
 from pathlib import Path
 from typing import Dict, Optional, Any
 from dataclasses import dataclass, asdict
-import getpass
 
 
 @dataclass
@@ -25,12 +23,22 @@ class LLMConfig:
 
 
 @dataclass
+class MCPConfig:
+    """MCP configuration."""
+    enabled: bool = True
+    auto_connect: bool = False
+    timeout: int = 30  # seconds
+    max_retries: int = 3
+
+
+@dataclass
 class SessionConfig:
     """Session configuration."""
     auto_save: bool = True
     save_interval: int = 300  # seconds
     max_history: int = 100
     enable_code_execution: bool = True
+    enable_mcp: bool = True
     image_folder: str = "images"
     reports_folder: str = "reports"
 
@@ -40,6 +48,7 @@ class OrionAIConfig:
     """Main OrionAI configuration."""
     llm: LLMConfig
     session: SessionConfig
+    mcp: MCPConfig
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -48,7 +57,8 @@ class OrionAIConfig:
     def from_dict(cls, data: Dict[str, Any]) -> 'OrionAIConfig':
         return cls(
             llm=LLMConfig(**data.get('llm', {})),
-            session=SessionConfig(**data.get('session', {}))
+            session=SessionConfig(**data.get('session', {})),
+            mcp=MCPConfig(**data.get('mcp', {}))
         )
 
 
@@ -58,7 +68,7 @@ class ConfigManager:
     def __init__(self):
         self.home_dir = Path.home()
         self.config_dir = self.home_dir / ".orionai"
-        self.config_file = self.config_dir / "config.yaml"
+        self.config_file = self.config_dir / "config.json"
         self.ensure_config_dir()
         self.config = self.load_config()
     
@@ -73,21 +83,22 @@ class ConfigManager:
         if self.config_file.exists():
             try:
                 with open(self.config_file, 'r') as f:
-                    data = yaml.safe_load(f)
+                    data = json.load(f)
                 return OrionAIConfig.from_dict(data)
             except Exception as e:
                 print(f"Error loading config: {e}. Using defaults.")
         
         return OrionAIConfig(
             llm=LLMConfig(),
-            session=SessionConfig()
+            session=SessionConfig(),
+            mcp=MCPConfig()
         )
     
     def save_config(self):
         """Save current configuration to file."""
         try:
             with open(self.config_file, 'w') as f:
-                yaml.dump(self.config.to_dict(), f, default_flow_style=False)
+                json.dump(self.config.to_dict(), f, indent=2)
         except Exception as e:
             print(f"Error saving config: {e}")
     

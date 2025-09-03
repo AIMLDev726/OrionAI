@@ -1,7 +1,24 @@
 # 🚀 OrionAI Python - Your AI Coding Companion
 
 [![PyPI version](https://img.shields.io/pypi/v/orionai.svg)](https://pypi.org/project/orionai/)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python## Features by Category
+
+<details>
+<summary><strong>🔌 MCP Server Management (NEW)</strong></summary>
+
+- Access to 396+ external MCP servers
+- Interactive menu-driven server browsing
+- Category-based organization (Search, Dev Tools, Databases, etc.)
+- Batch server selection and installation
+- Automatic dependency management (Node.js, Python, Docker)
+- API key configuration and management
+- Claude Desktop integration file generation
+- Support for NPM, PyPI, and OCI registry servers
+
+</details>
+
+<details>
+<summary><strong>🔍 AI Code Review & Quality (NEW)</strong></summary>/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red.svg)](https://streamlit.io/)
 
@@ -47,6 +64,30 @@ Or use the powerful CLI for terminal-based coding:
 ```bash
 orionai  # Launch interactive CLI with LLM chat and code execution
 ```
+
+### 🔌 MCP (Model Context Protocol) Server Management
+
+OrionAI now includes a comprehensive MCP server management system with access to **396+ external servers**:
+
+```bash
+# Launch CLI and select option 5: "📦 Install External MCP Servers"
+orionai
+
+# Browse and install servers by category:
+# 🔍 Web Search & Information (44 servers)
+# 💻 Development Tools (346 servers) 
+# 🔢 Calculators & Math (6 servers)
+# And many more categories!
+```
+
+**MCP Features:**
+- **📦 396+ External Servers** - Access the full MCP ecosystem
+- **🎯 Category Browsing** - Search, Development, Database, Social Media, etc.
+- **🔍 Smart Search** - Find servers by name or functionality
+- **⚡ Batch Installation** - Select and install multiple servers at once
+- **🔑 API Key Management** - Guided setup for external services
+- **📋 Dependency Checking** - Automatic Node.js, Python, Docker support
+- **⚙️ Auto Configuration** - Generate Claude Desktop integration files
 
 ## Installation
 
@@ -134,6 +175,7 @@ orionai
 - ⚡ **Instant startup** - Optimized lazy loading for fast performance
 - 🛠️ **Error recovery** - LLM automatically fixes syntax errors
 - 🔍 **AI Code Review** - Intelligent code analysis and quality assessment
+- 🔌 **MCP Server Management** - Install and configure 396+ external tools
 
 **CLI Workflow Example:**
 ```bash
@@ -178,6 +220,15 @@ orionai sessions
 ```
 
 ## What can OrionAI do?
+```
+
+### 🔌 MCP Server Integration
+```python
+# Access 396+ external MCP servers through CLI
+# Web search, databases, APIs, calculators, and more!
+ai.ask("Search for recent papers on machine learning")
+ai.ask("Get weather data for New York")
+ai.ask("Calculate complex mathematical expressions")
 ```
 
 ### 🌐 Web & API Operations

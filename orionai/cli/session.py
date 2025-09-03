@@ -32,6 +32,7 @@ class ChatMessage:
 
 
 @dataclass
+@dataclass
 class CodeExecution:
     """Represents a code execution result."""
     code: str

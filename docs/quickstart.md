@@ -81,7 +81,20 @@ response = code_chat.chat("What's the best way to handle missing data in pandas?
 result = code_chat.chat_with_code("Load iris dataset and show basic statistics")
 ```
 
-### 4. Streamlit UI (Interactive Testing)
+### 4. CLI with MCP Server Management
+
+```bash
+# Launch OrionAI CLI
+orionai
+
+# Features:
+# - Interactive LLM chat
+# - Live code execution  
+# - Session management
+# - MCP server installation (396+ external tools)
+```
+
+### 5. Streamlit UI (Interactive Testing)
 
 ```python
 from orionai.python import ui
@@ -110,7 +123,8 @@ ai = AIPython(
 ## 📋 Core Features
 
 - **🤖 AI-Powered Code Generation**: Generate and execute Python code with natural language
-- **📊 Data Science**: Pandas, NumPy, Matplotlib, Seaborn, Scikit-learn integration
+- **� MCP Server Management**: Access 396+ external tools (search, databases, APIs, etc.)
+- **�📊 Data Science**: Pandas, NumPy, Matplotlib, Seaborn, Scikit-learn integration
 - **🔬 Machine Learning**: Model training, evaluation, and prediction
 - **🌐 Web Operations**: API calls, web scraping, data fetching
 - **📈 Visualizations**: Automatic plot generation and saving
@@ -121,6 +135,13 @@ ai = AIPython(
 - **🔄 Interactive Learning**: Conversational Python tutoring
 
 ## 🎯 Quick Examples
+
+### MCP Server Management
+```python
+# Access via CLI - option 5: "📦 Install External MCP Servers"
+# Browse 396+ external tools organized by category:
+# 🔍 Web Search, 💻 Development, 🗄️ Databases, 📱 Social Media, etc.
+```
 
 ### Data Analysis
 ```python
@@ -146,9 +167,10 @@ result = ai.ask("Create a beautiful dashboard with multiple charts")
 ## 🚀 Next Steps
 
 1. **Explore Features**: Check out `docs/features.md` for complete feature list
-2. **API Reference**: See `docs/api.md` for detailed API documentation  
-3. **Examples**: Browse `examples/` directory for comprehensive examples
-4. **Interactive UI**: Launch `ui()` to test features interactively
+2. **MCP Management**: See `docs/mcp_management.md` for external server installation guide
+3. **API Reference**: See `docs/api.md` for detailed API documentation  
+4. **Examples**: Browse `examples/` directory for comprehensive examples
+5. **Interactive UI**: Launch `ui()` to test features interactively
 
 ## 🤝 Need Help?
 

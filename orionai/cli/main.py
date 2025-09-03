@@ -6,6 +6,7 @@ Rich CLI interface with session management and LLM selection.
 """
 
 import sys
+import argparse
 from pathlib import Path
 from typing import Optional
 
@@ -178,8 +179,30 @@ def show_main_menu(config_manager: ConfigManager, session_manager: SessionManage
     """Show the main menu and handle user choices."""
     console = Console()
     
+    # Initialize and auto-connect MCP servers on first load
+    try:
+        from ..mcp.manager import MCPManager
+        mcp_manager = MCPManager(config_manager.config_dir)
+        mcp_manager.connect_all_servers()
+    except Exception as e:
+        # Silently handle MCP connection errors to not disrupt main menu
+        pass
+    
+    # Initialize console with better handling
+    console = Console(force_terminal=True, width=None)
+    
+    # Track if this is the first display
+    first_display = True
+    
     while True:
-        console.clear()
+        # Only clear on first display or when explicitly needed
+        if first_display:
+            console.clear()
+            first_display = False
+        else:
+            # Just add some spacing instead of clearing
+            console.print("\n" * 2)
+        
         console.print(create_header())
         
         # Show current status
@@ -207,25 +230,31 @@ def show_main_menu(config_manager: ConfigManager, session_manager: SessionManage
         console.print(Panel(Align.center(status_text), style="blue"))
         
         # Menu options
-        menu_table = Table(box=rich.box.ROUNDED, show_header=False)
+        # Create enhanced menu with individual rows
+        menu_table = Table(title="🎯 Main Menu", box=rich.box.ROUNDED, show_header=False)
         menu_table.add_column("Option", style="cyan", width=8)
         menu_table.add_column("Description", style="white")
         
-        menu_options = [
-            ("1", "🚀 Start Interactive Chat"),
-            ("2", "📝 Manage Sessions"),
-            ("3", "🤖 Configure LLM Provider"),
-            ("4", "⚙️  Settings"),
-            ("5", "📊 Session Statistics"),
-            ("0", "🚪 Exit"),
-        ]
-        
-        for option, desc in menu_options:
-            menu_table.add_row(option, desc)
+        # Add each option with individual separators
+        menu_table.add_row("1", "🚀 Start Interactive Chat")
+        menu_table.add_section()
+        menu_table.add_row("2", "📝 Manage Sessions")
+        menu_table.add_section()
+        menu_table.add_row("3", "🤖 Configure LLM Provider")
+        menu_table.add_section()
+        menu_table.add_row("4", "🔌 MCP Local Servers (Manage existing)")
+        menu_table.add_section()
+        menu_table.add_row("5", "📦 Browse & Install MCP Servers (396+ available)")
+        menu_table.add_section()
+        menu_table.add_row("6", " Live Code Editor")
+        menu_table.add_section()
+        menu_table.add_row("7", "⚙️ Settings")
+        menu_table.add_section()
+        menu_table.add_row("0", "🚪 Exit")
         
         console.print(menu_table)
         
-        choice = Prompt.ask("Select option", choices=["0", "1", "2", "3", "4", "5"], default="1")
+        choice = Prompt.ask("Select option", choices=["0", "1", "2", "3", "4", "5", "6", "7"], default="1")
         
         if choice == "0":
             console.print("👋 Goodbye!", style="yellow")
@@ -268,12 +297,65 @@ def show_main_menu(config_manager: ConfigManager, session_manager: SessionManage
             input("Press Enter to continue...")
         
         elif choice == "4":
-            # Settings
-            handle_settings(config_manager, console)
+            # MCP Management
+            from ..mcp.manager import MCPManager
+            mcp_manager = MCPManager(config_manager.config_dir)
+            from .mcp_interface import show_mcp_main_menu
+            show_mcp_main_menu(mcp_manager, console)
         
         elif choice == "5":
-            # Statistics
-            show_session_statistics(session_manager, console)
+            # Interactive MCP Server Manager
+            console.print("🚀 Starting Interactive MCP Server Manager...", style="blue")
+            try:
+                from ..mcp.interactive_mcp_manager import InteractiveMCPManager
+                import asyncio
+                
+                manager = InteractiveMCPManager(config_manager.config_dir / "mcp")
+                asyncio.run(manager.run())
+                
+            except Exception as e:
+                console.print(f"❌ Failed to start MCP manager: {e}", style="red")
+                console.print("Please check that all dependencies are installed.", style="yellow")
+                input("Press Enter to continue...")
+        
+        elif choice == "6":
+            # Live Code Editor  
+            from .live_code import show_live_code_menu
+            # Create LLM interface using the same config if LLM is configured
+            llm_interface = None
+            try:
+                api_key = config_manager.get_api_key()
+                if api_key and hasattr(config_manager.config, 'llm') and hasattr(config_manager.config.llm, 'provider'):
+                    from ..core.llm_interface import LLMInterface, OpenAIProvider, AnthropicProvider, GoogleProvider
+                    
+                    provider_classes = {
+                        "openai": OpenAIProvider,
+                        "anthropic": AnthropicProvider,
+                        "google": GoogleProvider
+                    }
+                    
+                    provider_class = provider_classes.get(config_manager.config.llm.provider)
+                    if provider_class:
+                        model = getattr(config_manager.config.llm, 'model', None)
+                        provider = provider_class(
+                            api_key=api_key,
+                            model=model
+                        )
+                        llm_interface = LLMInterface(provider=provider)
+                        console.print("[dim green]✅ LLM interface initialized for code editor[/dim green]")
+                    else:
+                        console.print(f"[yellow]⚠️  Unknown LLM provider: {config_manager.config.llm.provider}[/yellow]")
+                else:
+                    console.print("[yellow]⚠️  No LLM configuration found - proceeding without AI suggestions[/yellow]")
+            except Exception as e:
+                console.print(f"[yellow]⚠️  Could not initialize LLM interface: {e}[/yellow]")
+                console.print("[dim]Code editor will work without AI suggestions[/dim]")
+            
+            show_live_code_menu(llm_interface)
+        
+        elif choice == "7":
+            # Settings
+            handle_settings(config_manager, console)
 
 
 def handle_session_management(session_manager: SessionManager, config_manager: ConfigManager, console: Console):
@@ -482,14 +564,190 @@ def show_session_statistics(session_manager: SessionManager, console: Console):
     input("Press Enter to continue...")
 
 
+class RichHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    """Custom formatter that uses Rich for beautiful help output."""
+    
+    def format_help(self):
+        console = Console()
+        
+        # Create beautiful help display
+        console.print(create_header())
+        
+        # Description
+        desc_panel = Panel(
+            "🤖 Interactive LLM Chat with Code Execution\n"
+            "🚀 Supports multiple LLM providers (OpenAI, Anthropic, Google)\n"
+            "💬 Session management and chat history\n"
+            "🔧 Live code execution and debugging\n"
+            "🎨 Rich terminal interface",
+            title="📋 Description",
+            style="blue"
+        )
+        console.print(desc_panel)
+        
+        # Usage
+        usage_table = Table(title="🎯 Usage", box=rich.box.ROUNDED)
+        usage_table.add_column("Command", style="cyan")
+        usage_table.add_column("Description", style="white")
+        
+        usage_table.add_row(
+            "python -m orionai.cli.main",
+            "Start interactive menu (default)"
+        )
+        usage_table.add_row(
+            "python -m orionai.cli.main --help",
+            "Show this help message"
+        )
+        usage_table.add_row(
+            "python -m orionai.cli.main --version",
+            "Show version information"
+        )
+        
+        console.print(usage_table)
+        
+        # Options
+        options_table = Table(title="⚙️ Options", box=rich.box.ROUNDED)
+        options_table.add_column("Option", style="green")
+        options_table.add_column("Description", style="white")
+        
+        options_table.add_row(
+            "--config-dir DIR",
+            "Custom configuration directory path"
+        )
+        options_table.add_row(
+            "--no-interactive",
+            "Disable interactive mode (for scripting)"
+        )
+        options_table.add_row(
+            "--version",
+            "Show version and exit"
+        )
+        options_table.add_row(
+            "-h, --help",
+            "Show this help message and exit"
+        )
+        
+        console.print(options_table)
+        
+        # Features
+        features_table = Table(title="✨ Features", box=rich.box.ROUNDED)
+        features_table.add_column("Feature", style="yellow")
+        features_table.add_column("Description", style="white")
+        
+        features_table.add_row("🚀 Interactive Chat", "Real-time conversations with AI")
+        features_table.add_row("📝 Session Management", "Save and resume chat sessions")
+        features_table.add_row("🤖 Multi-LLM Support", "OpenAI, Anthropic, Google models")
+        features_table.add_row("🔌 MCP Protocol", "Model Context Protocol integration")
+        features_table.add_row("🖥️ Local Models", "Run AI models locally")
+        features_table.add_row("💻 Live Code Editor", "Execute and debug code in real-time")
+        features_table.add_row("🎨 Visual Outputs", "Rich graphics and visualizations")
+        
+        console.print(features_table)
+        
+        # Footer
+        footer_text = Text()
+        footer_text.append("Made with ", style="white")
+        footer_text.append("❤️", style="red")
+        footer_text.append(" by OrionAI Team", style="white")
+        
+        console.print(Panel(Align.center(footer_text), style="green"))
+        
+        return ""  # Return empty string since we've already printed everything
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="OrionAI - Interactive LLM Chat with Code Execution",
+        formatter_class=RichHelpFormatter,
+        add_help=False  # We'll handle help manually
+    )
+    
+    parser.add_argument(
+        "--version", 
+        action="store_true",
+        help="Show version information"
+    )
+    
+    parser.add_argument(
+        "--help", "-h",
+        action="store_true",
+        help="Show this help message"
+    )
+    
+    parser.add_argument(
+        "--config-dir",
+        type=str,
+        help="Custom configuration directory path"
+    )
+    
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        help="Disable interactive mode (for scripting)"
+    )
+    
+    return parser.parse_args()
+
+
+def show_version():
+    """Show version information with rich UI."""
+    console = Console()
+    
+    # Create version display
+    version_text = Text()
+    version_text.append("🚀 ", style="bold yellow")
+    version_text.append("OrionAI CLI ", style="bold blue")
+    version_text.append("v1.0.0", style="bold green")
+    
+    version_panel = Panel(
+        Align.center(version_text),
+        title="📦 Version Information",
+        style="blue"
+    )
+    
+    console.print(version_panel)
+    
+    # Additional info
+    info_table = Table(box=rich.box.ROUNDED, show_header=False)
+    info_table.add_column("Item", style="cyan")
+    info_table.add_column("Value", style="white")
+    
+    info_table.add_row("🔧 Python", f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    info_table.add_row("📁 Platform", sys.platform)
+    info_table.add_row("🏠 Repository", "https://github.com/AIMLDev726/OrionAI")
+    
+    console.print(info_table)
+
+
 def main_cli():
     """Main CLI entry point."""
     try:
+        # Parse arguments first
+        args = parse_args()
+        
         console = Console()
+        
+        # Handle version flag
+        if args.version:
+            show_version()
+            return
+        
+        # Handle help flag
+        if args.help:
+            parser = argparse.ArgumentParser(formatter_class=RichHelpFormatter)
+            parser.print_help()
+            return
         
         # Initialize managers
         config_manager = ConfigManager()
         session_manager = SessionManager(config_manager)
+        
+        # If non-interactive mode, just show status and exit
+        if args.no_interactive:
+            console.print("OrionAI CLI - Non-interactive mode")
+            console.print(f"Config directory: {config_manager.config_dir}")
+            return
         
         # Check if this is first run
         if not config_manager.config_file.exists():

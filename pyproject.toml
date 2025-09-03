@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orionai"
 version = "1.0.0"
-description = "AI-powered Python assistant with intelligent code review, natural language coding, CLI and web interface"
+description = "AI-powered Python assistant with MCP server management, intelligent code review, natural language coding, CLI and web interface"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -17,7 +17,8 @@ maintainers = [
 keywords = [
     "ai", "python", "assistant", "llm", "coding", "automation", 
     "data-science", "machine-learning", "natural-language",
-    "code-review", "quality-assurance", "security-analysis"
+    "code-review", "quality-assurance", "security-analysis",
+    "mcp", "model-context-protocol", "external-tools", "server-management"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -93,7 +94,7 @@ orionai = "orionai.cli.main:main_cli"
 orionai-ui = "orionai.ui:main"
 
 [tool.setuptools]
-packages = ["orionai", "orionai.python", "orionai.ui", "orionai.core", "orionai.adapters", "orionai.utils", "orionai.cli"]
+packages = ["orionai", "orionai.python", "orionai.ui", "orionai.core", "orionai.adapters", "orionai.utils", "orionai.cli", "orionai.mcp"]
 
 [tool.setuptools.package-data]
 orionai = ["*.md", "*.txt", "*.yml", "*.yaml"]
